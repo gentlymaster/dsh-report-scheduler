@@ -147,6 +147,13 @@ const scenarios = [
       ['新建与调度', ['+ 新建任务', '手动 tick']],
     ],
   },
+  {
+    label: '场景 D：没填推送 token 时应给出提醒',
+    overrides: { cloud: cloudOff, stepLog: null, config: { ...config, push: { provider: 'serverchan', token: '', title: 'DSH 定时报告' } } },
+    must: [
+      ['缺 token 提醒', ['还没填推送 token', '先回 ① 推送渠道填好并保存']],
+    ],
+  },
 ];
 
 let failures = 0;
@@ -173,5 +180,5 @@ if (failures > 0) {
   console.log(`== 面板自检失败（${failures} 项）==`);
   process.exitCode = 1;
 } else {
-  console.log('== 面板自检通过：三个场景的卡片、按钮与状态全部渲染正常 ==');
+  console.log(`== 面板自检通过：${scenarios.length} 个场景的卡片、按钮与状态全部渲染正常 ==`);
 }
