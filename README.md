@@ -55,9 +55,12 @@ Token 只保存在本机 `~/.dsh/dsh-report-scheduler/github.json`，密钥保�
 ## 自检
 
 ```bash
-node plugin-selftest.mjs      # 17 项宿主侧接口自检（用假 ctx 调真实路由，不需要重启 DSH）
-node package-dist.mjs         # 打包 zip + 生成安装说明
+node selftest.mjs         # 17 项宿主侧接口自检（假 ctx 调真实路由，不需要重启 DSH）
+node selftest-client.mjs  # 3 个场景渲染面板（极简 React 替身，不需要浏览器）
+node selftest-client.mjs --print   # 顺便把渲染出来的面板文字打出来，肉眼核对
 ```
+
+打包（在插件目录上一级执行）：`node package-dist.mjs` → `dist/` 里出 zip 与安装说明。
 
 ## 依赖
 
