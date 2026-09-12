@@ -4,6 +4,9 @@
   "description": "Scheduled reports for DeepSeek Harness: configure everything in the settings panel (push channel, keys, cloud deploy, local scheduled task), then reports are generated on schedule and pushed to your phone",
   "type": "module",
   "main": "lib/index.js",
+  "scripts": {
+    "test": "node selftest.mjs && node selftest-client.mjs"
+  },
   "exports": {
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
