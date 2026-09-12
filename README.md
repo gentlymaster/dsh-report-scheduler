@@ -8,6 +8,24 @@
   - **云端**：GitHub Actions 跑（**电脑关机也能收到**），仓库由插件自动创建
 - 报告可归档到 Obsidian 库；每次运行的 token 与花费会记进账本，面板直接看
 
+## 安装
+
+三种装法（任选其一）：
+
+```bash
+# A. 一键安装器（zip 分发）：解压后双击 安装.cmd，或
+node install.mjs
+
+# B. 从 GitHub
+dsh plugin --profile web add github:gentlymaster/dsh-report-scheduler
+#   装完把 "dsh-report-scheduler" 加进 %DSH_HOME%\profiles\web\package.json 的 dsh.profile.bundles，再 pnpm install
+
+# C. npm（尚未发布）
+dsh plugin --profile web add dsh-report-scheduler
+```
+
+装完重启 DSH Desktop。
+
 ## 装完之后怎么配（全在面板里，不需要改文件）
 
 打开 设置 → 定时报告 → **渠道与云端**：
