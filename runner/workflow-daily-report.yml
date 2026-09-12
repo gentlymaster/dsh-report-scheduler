@@ -1,0 +1,101 @@
+name: cloud-report
+
+on:
+  schedule:
+    # 每小时整点（UTC）。任务里的 time 用北京时间（Asia/Shanghai），由脚本判断是否到点。
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '强制运行指定任务 id（留空=按时间判定）'
+        required: false
+        default: ''
+
+permissions:
+  contents: write # 需要把 cloud-state.json（档期记录）提交回仓库，避免重复推送
+
+concurrency:
+  group: cloud-report
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 密钥来源二选一，面板「一键部署」会自动写入其中一种：
+      #   1) GitHub Actions Secrets（推荐，需要 token 有 Secrets 写权限）
+      #   2) 仓库根目录 env.json（Secrets 权限不够时的回退，仅私有仓建议使用）
+      - name: 载入密钥与变量
+        env:
+          S_DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          S_PUSH_TOKEN: ${{ secrets.PUSH_TOKEN }}
+          S_SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
+          S_SEARCH_API_KEY: ${{ secrets.SEARCH_API_KEY }}
+          V_PUSH_PROVIDER: ${{ vars.PUSH_PROVIDER }}
+          V_SEARCH_PROVIDER: ${{ vars.SEARCH_PROVIDER }}
+          V_SEARCH_DEPTH: ${{ vars.SEARCH_DEPTH }}
+          V_REPORT_TITLE: ${{ vars.REPORT_TITLE }}
+          V_DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL }}
+        run: |
+          add() { if [ -n "$2" ]; then echo "$1=$2" >> "$GITHUB_ENV"; fi; }
+          add DEEPSEEK_API_KEY "$S_DEEPSEEK_API_KEY"
+          add PUSH_TOKEN "$S_PUSH_TOKEN"
+          add SERVERCHAN_KEY "$S_SERVERCHAN_KEY"
+          add SEARCH_API_KEY "$S_SEARCH_API_KEY"
+          add PUSH_PROVIDER "$V_PUSH_PROVIDER"
+          add SEARCH_PROVIDER "$V_SEARCH_PROVIDER"
+          add SEARCH_DEPTH "$V_SEARCH_DEPTH"
+          add REPORT_TITLE "$V_REPORT_TITLE"
+          add DEEPSEEK_MODEL "$V_DEEPSEEK_MODEL"
+          if [ -f env.json ]; then
+            echo "发现 env.json，作为空缺项的回退来源"
+            while IFS= read -r line; do
+              case "$line" in ''|\#*) continue;; esac
+              key="${line%%=*}"
+              value="${line#*=}"
+              [ -z "$key" ] && continue
+              current="$(printenv "$key" || true)"
+              if [ -z "$current" ] && [ -n "$value" ]; then echo "$key=$value" >> "$GITHUB_ENV"; fi
+            done < env.json
+          fi
+          echo "密钥载入完成"
+
+      - name: 派发到点任务
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORCE_TASK: ${{ inputs.force }}
+        run: |
+          if [ -n "$FORCE_TASK" ]; then
+            node cloud-dispatch.mjs --force "$FORCE_TASK"
+          else
+            node cloud-dispatch.mjs
+          fi
+
+      - name: 提交存档与账本
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "无变化，无需提交"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cloud-state.json ledger.jsonl reports 2>/dev/null || git add -A
+          git commit -m "chore: 更新档期/账本/报告存档 [skip ci]" || true
+          # 两次运行撞车时 push 会被拒：rebase 后重试，最多 3 次
+          for i in 1 2 3; do
+            if git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && git push; then
+              echo "已提交"
+              exit 0
+            fi
+            echo "第 $i 次 push 失败，3 秒后重试"
+            sleep 3
+          done
+          echo "提交失败（不致命：下次运行会重新执行该任务）"
+          exit 0
