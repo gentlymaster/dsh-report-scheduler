@@ -1,0 +1,11 @@
+# dsh-report-scheduler bundle patch: inserts the plugin row into the profile roster.
+# Applied as a profile bundle layer (declared by the `dsh.bundle.patch`
+# manifest field in package.json). Activate with:
+#
+#   dsh plugin --profile web add link:C:\Users\gentl\.dsh\dsh-report-scheduler\plugin
+#
+- insert:
+    - id: report-scheduler
+      name: dsh-report-scheduler
+      config:
+        enabled: true
